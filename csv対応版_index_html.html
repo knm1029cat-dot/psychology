@@ -1,0 +1,499 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>心理学用語学習サイト</title>
+
+<style>
+:root {
+  --bg:#f5f7fc;
+  --card:#ffffff;
+  --text:#1f2937;
+  --muted:#6b7280;
+  --border:#e5e7eb;
+  --accent:#4f46e5;
+  --accent-soft:#eef2ff;
+  --good:#16a34a;
+  --mid:#d97706;
+  --bad:#dc2626;
+  --shadow:0 10px 28px rgba(15,23,42,.06);
+}
+
+*{box-sizing:border-box;}
+
+body{
+  margin:0;
+  font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Hiragino Sans","Yu Gothic",sans-serif;
+  background:linear-gradient(180deg,#f8f9fd 0%,#f3f6fc 100%);
+  color:var(--text);
+  line-height:1.6;
+}
+
+.container{
+  max-width:960px;
+  margin:0 auto;
+  padding:18px 14px 40px;
+}
+
+h1{
+  font-size:clamp(1.6rem,4vw,2.2rem);
+  margin:0 0 6px;
+}
+
+.sub{
+  color:var(--muted);
+  margin-bottom:16px;
+  font-size:.95rem;
+}
+
+.card{
+  background:var(--card);
+  border:1px solid var(--border);
+  border-radius:20px;
+  padding:18px;
+  box-shadow:var(--shadow);
+  margin-bottom:14px;
+}
+
+.label{
+  font-size:.9rem;
+  color:var(--muted);
+  margin-bottom:8px;
+}
+
+.term{
+  font-size:clamp(1.45rem,5vw,2rem);
+  font-weight:800;
+  margin-bottom:10px;
+  line-height:1.3;
+  word-break:break-word;
+}
+
+.answer{
+  display:none;
+  margin-top:14px;
+  padding:14px;
+  border-radius:14px;
+  background:#fafbff;
+  border:1px solid var(--border);
+  white-space:pre-wrap;
+  font-size:.98rem;
+}
+
+.answer.show{display:block;}
+
+.buttons,.eval-buttons,.mode-buttons{
+  display:flex;
+  flex-wrap:wrap;
+  gap:10px;
+  margin-top:14px;
+}
+
+button{
+  border:none;
+  border-radius:14px;
+  padding:13px 16px;
+  font-size:.98rem;
+  font-weight:600;
+  cursor:pointer;
+  min-height:48px;
+}
+
+.primary{background:var(--accent);color:white;}
+.secondary{background:var(--accent-soft);color:var(--accent);}
+.good{background:#ecfdf3;color:var(--good);}
+.mid{background:#fff7ed;color:var(--mid);}
+.bad{background:#fef2f2;color:var(--bad);}
+
+.mode-buttons button.active{
+  outline:2px solid rgba(79,70,229,.25);
+}
+
+textarea{
+  width:100%;
+  min-height:140px;
+  border:1px solid var(--border);
+  border-radius:14px;
+  padding:14px;
+  font:inherit;
+  resize:vertical;
+  background:#fff;
+}
+
+.stats{
+  display:grid;
+  grid-template-columns:repeat(4,1fr);
+  gap:10px;
+}
+
+.stat-box{
+  background:#fafbff;
+  border:1px solid var(--border);
+  border-radius:14px;
+  padding:14px;
+}
+
+.stat-title{color:var(--muted);font-size:.88rem;}
+.stat-value{font-size:1.35rem;font-weight:800;margin-top:4px;}
+
+.notice{
+  color:var(--muted);
+  font-size:.92rem;
+  margin-top:10px;
+}
+
+.error{
+  color:var(--bad);
+  font-size:.92rem;
+  margin-top:10px;
+  white-space:pre-wrap;
+}
+
+@media(max-width:640px){
+  .stats{grid-template-columns:repeat(2,1fr);}
+}
+</style>
+</head>
+
+<body>
+<div class="container">
+
+  <h1>心理学用語学習サイト</h1>
+  <div class="sub">用語を見て自分で説明 → 答え確認 → 自己評価</div>
+
+  <div class="card">
+    <div class="label">問題</div>
+    <div id="term" class="term">読み込み中...</div>
+
+    <div class="mode-buttons">
+      <button id="mode-all" onclick="setMode('all')">全問題</button>
+      <button id="mode-weak" onclick="setMode('weak')">苦手中心</button>
+      <button id="mode-daily" onclick="setMode('daily')">今日の10問</button>
+      <button id="mode-bad" onclick="setMode('bad')">✕だけ</button>
+    </div>
+
+    <div class="label" style="margin-top:16px;">自分の説明を書く</div>
+    <textarea id="userAnswer" placeholder="ここに説明を書いてみよう"></textarea>
+
+    <div id="answer" class="answer"></div>
+    <div id="message" class="error"></div>
+
+    <div class="buttons">
+      <button class="primary" onclick="showAnswer()">答えを見る</button>
+      <button class="secondary" onclick="nextQuestion()">次の問題</button>
+    </div>
+
+    <div class="eval-buttons">
+      <button class="good" onclick="evaluateCurrent('good')">◎ 書けた</button>
+      <button class="mid" onclick="evaluateCurrent('mid')">△ あいまい</button>
+      <button class="bad" onclick="evaluateCurrent('bad')">✕ わからない</button>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="label">学習状況</div>
+
+    <div class="stats">
+      <div class="stat-box">
+        <div class="stat-title">◎ 書けた</div>
+        <div id="goodCount" class="stat-value">0</div>
+      </div>
+
+      <div class="stat-box">
+        <div class="stat-title">△ あいまい</div>
+        <div id="midCount" class="stat-value">0</div>
+      </div>
+
+      <div class="stat-box">
+        <div class="stat-title">✕ わからない</div>
+        <div id="badCount" class="stat-value">0</div>
+      </div>
+
+      <div class="stat-box">
+        <div class="stat-title">進捗率</div>
+        <div id="progressRate" class="stat-value">0%</div>
+      </div>
+    </div>
+
+    <div class="notice" id="totalCount">用語数：0</div>
+
+    <div class="buttons">
+      <button class="secondary" onclick="resetProgress()">評価だけリセット</button>
+      <button class="secondary" onclick="loadCSV()">CSVを再読み込み</button>
+    </div>
+  </div>
+
+</div>
+
+<script>
+const CSV_FILE = "terms.csv";
+const PROGRESS_KEY = "psych_terms_progress_csv_v1";
+
+let terms = [];
+let progress = {};
+let queue = [];
+let queueIndex = 0;
+let currentIndex = -1;
+let currentMode = "all";
+
+function parseCSV(text){
+  const rows = [];
+  let row = [];
+  let cell = "";
+  let inQuotes = false;
+
+  for(let i = 0; i < text.length; i++){
+    const char = text[i];
+    const next = text[i + 1];
+
+    if(char === '"' && inQuotes && next === '"'){
+      cell += '"';
+      i++;
+    }else if(char === '"'){
+      inQuotes = !inQuotes;
+    }else if(char === "," && !inQuotes){
+      row.push(cell);
+      cell = "";
+    }else if((char === "\n" || char === "\r") && !inQuotes){
+      if(char === "\r" && next === "\n") i++;
+      row.push(cell);
+      rows.push(row);
+      row = [];
+      cell = "";
+    }else{
+      cell += char;
+    }
+  }
+
+  if(cell || row.length){
+    row.push(cell);
+    rows.push(row);
+  }
+
+  return rows;
+}
+
+async function loadCSV(){
+  const message = document.getElementById("message");
+  message.textContent = "";
+  document.getElementById("term").textContent = "読み込み中...";
+
+  try{
+    const response = await fetch(CSV_FILE + "?t=" + Date.now());
+
+    if(!response.ok){
+      throw new Error("CSVファイルを読み込めませんでした。");
+    }
+
+    const text = await response.text();
+    const rows = parseCSV(text).filter(row => row.some(cell => cell.trim() !== ""));
+
+    if(rows.length < 2){
+      throw new Error("CSVに用語データがありません。1行目に term,answer を入れて、2行目以降に用語を入れてね。");
+    }
+
+    const headers = rows[0].map(h => h.trim().toLowerCase());
+    const termIndex = headers.indexOf("term");
+    const answerIndex = headers.indexOf("answer");
+
+    if(termIndex === -1 || answerIndex === -1){
+      throw new Error("CSVの1行目は term,answer にしてね。例：term,answer,category");
+    }
+
+    terms = rows.slice(1).map(row => ({
+      term: (row[termIndex] || "").trim(),
+      answer: (row[answerIndex] || "").trim(),
+      category: headers.includes("category") ? (row[headers.indexOf("category")] || "").trim() : ""
+    })).filter(item => item.term && item.answer);
+
+    if(!terms.length){
+      throw new Error("読み込める用語がありません。term と answer の両方を入力してね。");
+    }
+
+    progress = JSON.parse(localStorage.getItem(PROGRESS_KEY) || "{}");
+
+    rebuildQueue();
+    updateCounts();
+    updateModeButtons();
+    nextQuestion();
+
+  }catch(error){
+    document.getElementById("term").textContent = "読み込みエラー";
+    message.textContent =
+      error.message +
+      "\n\n※ index.htmlを file:/// で開いている場合、CSVを読み込めないことがあります。" +
+      "\nそのときは VS Code の Live Server か GitHub Pages で開いてね。";
+  }
+}
+
+function getPool(){
+  if(currentMode === "bad"){
+    return terms.filter(t => progress[t.term] === "bad");
+  }
+
+  if(currentMode === "weak"){
+    return terms.filter(t => {
+      const status = progress[t.term];
+      return status === "mid" || status === "bad" || !status;
+    });
+  }
+
+  if(currentMode === "daily"){
+    return getDailyTerms(10);
+  }
+
+  return terms;
+}
+
+function getDailyTerms(count){
+  const today = new Date().toISOString().slice(0,10);
+  const seed = today.split("").reduce((sum, char) => sum + char.charCodeAt(0), 0);
+
+  const copied = terms.slice();
+
+  copied.sort((a,b) => {
+    const scoreA = hashText(a.term + seed);
+    const scoreB = hashText(b.term + seed);
+    return scoreA - scoreB;
+  });
+
+  return copied.slice(0, count);
+}
+
+function hashText(text){
+  let hash = 0;
+  for(let i = 0; i < text.length; i++){
+    hash = ((hash << 5) - hash) + text.charCodeAt(i);
+    hash |= 0;
+  }
+  return Math.abs(hash);
+}
+
+function rebuildQueue(){
+  const pool = getPool();
+  queue = pool.slice().sort(() => Math.random() - 0.5);
+  queueIndex = 0;
+}
+
+function nextQuestion(){
+  const message = document.getElementById("message");
+  message.textContent = "";
+
+  if(!terms.length){
+    document.getElementById("term").textContent = "用語がありません";
+    return;
+  }
+
+  if(!queue.length){
+    document.getElementById("term").textContent = "このモードの問題はありません";
+    currentIndex = -1;
+    clearQuestionArea();
+    return;
+  }
+
+  if(queueIndex >= queue.length){
+    rebuildQueue();
+  }
+
+  const item = queue[queueIndex];
+  queueIndex++;
+
+  currentIndex = terms.findIndex(t => t.term === item.term);
+
+  document.getElementById("term").textContent = item.term;
+  clearQuestionArea();
+}
+
+function clearQuestionArea(){
+  const answerBox = document.getElementById("answer");
+  answerBox.classList.remove("show");
+  answerBox.textContent = "";
+  document.getElementById("userAnswer").value = "";
+}
+
+function showAnswer(){
+  if(currentIndex < 0 || !terms[currentIndex]) return;
+
+  const answerBox = document.getElementById("answer");
+  const user = document.getElementById("userAnswer").value.trim();
+  const item = terms[currentIndex];
+
+  answerBox.classList.add("show");
+
+  answerBox.textContent =
+    "あなたの回答\n" +
+    (user || "未入力") +
+    "\n\n正解\n" +
+    item.answer;
+
+  answerBox.scrollIntoView({behavior:"smooth", block:"nearest"});
+}
+
+function evaluateCurrent(level){
+  if(currentIndex < 0 || !terms[currentIndex]) return;
+
+  const item = terms[currentIndex];
+  progress[item.term] = level;
+
+  localStorage.setItem(PROGRESS_KEY, JSON.stringify(progress));
+
+  updateCounts();
+
+  if(currentMode === "bad" || currentMode === "weak"){
+    rebuildQueue();
+  }
+
+  nextQuestion();
+}
+
+function updateCounts(){
+  const targetTerms = new Set(terms.map(t => t.term));
+  const values = Object.entries(progress)
+    .filter(([term]) => targetTerms.has(term))
+    .map(([,value]) => value);
+
+  const good = values.filter(v => v === "good").length;
+  const mid = values.filter(v => v === "mid").length;
+  const bad = values.filter(v => v === "bad").length;
+
+  document.getElementById("goodCount").textContent = good;
+  document.getElementById("midCount").textContent = mid;
+  document.getElementById("badCount").textContent = bad;
+
+  const rate = terms.length ? Math.round((good / terms.length) * 100) : 0;
+  document.getElementById("progressRate").textContent = rate + "%";
+  document.getElementById("totalCount").textContent = "用語数：" + terms.length;
+}
+
+function resetProgress(){
+  if(!confirm("評価をリセットする？ 用語データは消えないよ。")) return;
+
+  progress = {};
+  localStorage.setItem(PROGRESS_KEY, JSON.stringify(progress));
+  updateCounts();
+  rebuildQueue();
+  nextQuestion();
+}
+
+function setMode(mode){
+  currentMode = mode;
+  rebuildQueue();
+  updateModeButtons();
+  nextQuestion();
+}
+
+function updateModeButtons(){
+  const modes = ["all", "weak", "daily", "bad"];
+  modes.forEach(mode => {
+    const button = document.getElementById("mode-" + mode);
+    if(button){
+      button.classList.toggle("active", currentMode === mode);
+    }
+  });
+}
+
+loadCSV();
+</script>
+</body>
+</html>
