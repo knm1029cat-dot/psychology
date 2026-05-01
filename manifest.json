@@ -1,14 +1,14 @@
 {
   "name": "心理学用語",
   "short_name": "心理学用語",
-  "start_url": "./",
+  "start_url": "./index.html",
   "display": "standalone",
-  "background_color": "#111111",
   "theme_color": "#111111",
+  "background_color": "#111111",
   "icons": [
     {
-      "src": "icon.png",
-      "sizes": "192x192",
+      "src": "./icon.png",
+      "sizes": "any",
       "type": "image/png"
     }
   ]
